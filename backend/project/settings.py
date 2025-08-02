@@ -46,6 +46,7 @@ MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'project.middleware.HealthCheckMiddleware',  # Add healthcheck middleware
+    'project.middleware.CSRFExemptMiddleware',  # Add CSRF exemption middleware
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -174,8 +175,10 @@ CORS_ALLOWED_ORIGINS = [
 # Add your frontend domain here when deployed
 if not DEBUG:
     CORS_ALLOWED_ORIGINS.extend([
-        "https://your-frontend-domain.com",
-        "https://your-frontend-domain.vercel.app",
+        "http://localhost:5173",
+        "https://localhost:5173",
+        "http://127.0.0.1:5173",
+        "https://127.0.0.1:5173",
     ])
 
 CORS_ALLOW_CREDENTIALS = True
