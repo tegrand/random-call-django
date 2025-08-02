@@ -9,10 +9,22 @@ def health_check(request):
     """Health check endpoint for Railway"""
     return JsonResponse({"status": "healthy", "message": "Django app is running"})
 
+def websocket_test(request):
+    """Test endpoint to check WebSocket support"""
+    return JsonResponse({
+        "status": "websocket_test",
+        "message": "WebSocket endpoints available",
+        "endpoints": {
+            "video_call": "/ws/video_call/{call_id}/",
+            "matching": "/ws/matching/"
+        }
+    })
+
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/v1/', include('api.v1.users.urls')),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('websocket-test/', websocket_test, name='websocket_test'),
     path('', health_check, name='health_check'),
 ]
 
