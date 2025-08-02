@@ -170,6 +170,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:5173",
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    "https://call.tinywheel.in",
 ]
 
 # Add your frontend domain here when deployed
@@ -179,6 +180,7 @@ if not DEBUG:
         "https://localhost:5173",
         "http://127.0.0.1:5173",
         "https://127.0.0.1:5173",
+        "https://call.tinywheel.in",
     ])
 
 CORS_ALLOW_CREDENTIALS = True
@@ -188,6 +190,7 @@ CSRF_TRUSTED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
     "https://random-call-django-production.up.railway.app",
+    "https://call.tinywheel.in",
 ]
 
 # Allow API requests without CSRF
