@@ -38,39 +38,37 @@ class UserRegistrationView(APIView):
     
     def post(self, request):
         try:
-            # Generate unique username and password
+            # Generate unique username
             username = self.generate_username()
+            
+            # Create user with random password
             password = ''.join(random.choices(string.ascii_letters + string.digits, k=12))
-            
-            print(f"Creating user: {username}")
-            
-            # Create user with generated credentials
             user = User.objects.create_user(
                 username=username,
-                password=password
+                password=password,
+                is_online=True,
+                last_seen=timezone.now()
             )
-            user.is_online = True
-            user.last_seen = timezone.now()
-            user.save()
             
-            # Create session
-            session = UserSession.objects.create(user=user)
+            print(f"Created user: {username}, is_online: {user.is_online}")
             
-            # Generate JWT tokens
+            # Generate tokens
             refresh = RefreshToken.for_user(user)
             access_token = str(refresh.access_token)
             refresh_token = str(refresh)
             
-            serializer = UserSerializer(user)
-            print(f"User created successfully: {username}")
+            # Serialize user data
+            user_data = UserSerializer(user).data
+            
             return Response({
-                'user': serializer.data,
+                'user': user_data,
                 'access_token': access_token,
                 'refresh_token': refresh_token
             }, status=status.HTTP_201_CREATED)
+            
         except Exception as e:
             print(f"Error creating user: {e}")
-            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': 'Failed to create user'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 @method_decorator(csrf_exempt, name='dispatch')
@@ -93,6 +91,7 @@ class CreateVideoCallView(APIView):
     def post(self, request):
         user = request.user
         print(f"Creating video call for user: {user.username}")
+        print(f"User {user.username} - is_online: {user.is_online}, is_looking_for_call: {user.is_looking_for_call}, current_call: {user.current_call}")
         
         # Check if user is already in a call
         if user.current_call:
@@ -103,9 +102,12 @@ class CreateVideoCallView(APIView):
         call = VideoCall.objects.create(initiator=user)
         user.current_call = call
         user.is_looking_for_call = True
+        user.is_online = True
+        user.last_seen = timezone.now()
         user.save()
         
         print(f"Created call {call.id} for user {user.username}")
+        print(f"Updated user {user.username} - is_online: {user.is_online}, is_looking_for_call: {user.is_looking_for_call}, current_call: {user.current_call}")
         
         serializer = VideoCallSerializer(call)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -118,11 +120,19 @@ class FindMatchView(APIView):
     def post(self, request):
         user = request.user
         print(f"Finding match for user: {user.username}")
+        print(f"User {user.username} - is_online: {user.is_online}, is_looking_for_call: {user.is_looking_for_call}, current_call: {user.current_call}")
         
         # Check if user has an active call
         if not user.current_call:
             print(f"User {user.username} has no active call")
             return Response({'error': 'No active call found'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Mark user as online and looking for call
+        user.is_online = True
+        user.is_looking_for_call = True
+        user.last_seen = timezone.now()
+        user.save()
+        print(f"Updated user {user.username} - is_online: {user.is_online}, is_looking_for_call: {user.is_looking_for_call}")
         
         # First, try to find users who are currently looking for calls
         available_users = User.objects.filter(
@@ -133,7 +143,7 @@ class FindMatchView(APIView):
         
         print(f"Currently looking for calls: {available_users.count()}")
         for available_user in available_users:
-            print(f"  - {available_user.username} (call: {available_user.current_call.id})")
+            print(f"  - {available_user.username} (call: {available_user.current_call.id}, online: {available_user.is_online}, looking: {available_user.is_looking_for_call})")
         
         if available_users.exists():
             # Get the first available user
@@ -179,7 +189,7 @@ class FindMatchView(APIView):
         
         print(f"Recently active users: {recent_users.count()}")
         for recent_user in recent_users:
-            print(f"  - {recent_user.username} (last seen: {recent_user.last_seen})")
+            print(f"  - {recent_user.username} (last seen: {recent_user.last_seen}, online: {recent_user.is_online})")
         
         if recent_users.exists():
             # Pick a random recent user
@@ -224,7 +234,7 @@ class FindMatchView(APIView):
         
         print(f"Online users: {online_users.count()}")
         for online_user in online_users:
-            print(f"  - {online_user.username} (looking: {online_user.is_looking_for_call})")
+            print(f"  - {online_user.username} (looking: {online_user.is_looking_for_call}, call: {online_user.current_call})")
         
         if online_users.exists():
             # Pick a random online user
@@ -455,3 +465,27 @@ def user_logout(request):
     user.save()
     
     return Response({'status': 'logged_out'})
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+@csrf_exempt
+def debug_users(request):
+    """Debug endpoint to see all users"""
+    users = User.objects.all()
+    user_data = []
+    for user in users:
+        user_data.append({
+            'id': user.id,
+            'username': user.username,
+            'is_online': user.is_online,
+            'is_looking_for_call': user.is_looking_for_call,
+            'last_seen': user.last_seen,
+            'current_call': user.current_call.id if user.current_call else None,
+            'current_call_status': user.current_call.status if user.current_call else None
+        })
+    
+    return Response({
+        'total_users': users.count(),
+        'users': user_data
+    })
