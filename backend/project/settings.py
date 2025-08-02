@@ -14,12 +14,18 @@ SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-your-secret-key-here'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get('DEBUG', 'True').lower() == 'true'
 
-# Allow all hosts in production for Railway deployment
-if DEBUG:
-    ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
-else:
-    # In production, allow all hosts for Railway including healthcheck
-    ALLOWED_HOSTS = ['*', 'healthcheck.railway.app']
+# Allow all hosts including Railway healthcheck
+ALLOWED_HOSTS = [
+    'localhost',
+    '127.0.0.1',
+    'healthcheck.railway.app',
+    '*'
+]
+
+# Add any additional hosts from environment variable
+if os.environ.get('ALLOWED_HOSTS'):
+    additional_hosts = os.environ.get('ALLOWED_HOSTS').split(',')
+    ALLOWED_HOSTS.extend([host.strip() for host in additional_hosts])
 
 # Application definition
 INSTALLED_APPS = [
@@ -39,6 +45,7 @@ MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
+    'project.middleware.HealthCheckMiddleware',  # Add healthcheck middleware
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
