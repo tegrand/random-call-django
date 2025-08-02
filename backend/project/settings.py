@@ -18,8 +18,8 @@ DEBUG = os.environ.get('DEBUG', 'True').lower() == 'true'
 if DEBUG:
     ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 else:
-    # In production, allow all hosts for Railway
-    ALLOWED_HOSTS = ['*']
+    # In production, allow all hosts for Railway including healthcheck
+    ALLOWED_HOSTS = ['*', 'healthcheck.railway.app']
 
 # Application definition
 INSTALLED_APPS = [
@@ -122,9 +122,13 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
-STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, 'static'),
-]
+
+# Only add STATICFILES_DIRS if the directory exists
+static_dir = os.path.join(BASE_DIR, 'static')
+if os.path.exists(static_dir):
+    STATICFILES_DIRS = [static_dir]
+else:
+    STATICFILES_DIRS = []
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
