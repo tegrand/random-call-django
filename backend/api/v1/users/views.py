@@ -7,7 +7,8 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from django.utils import timezone
 from django.db import transaction
 from django.shortcuts import get_object_or_404
-from django.db.models import Q
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
 import uuid
 import random
 import string
@@ -20,6 +21,7 @@ from users.serializers import (
 )
 
 
+@method_decorator(csrf_exempt, name='dispatch')
 class UserRegistrationView(APIView):
     permission_classes = [AllowAny]
     
@@ -71,6 +73,7 @@ class UserRegistrationView(APIView):
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
+@method_decorator(csrf_exempt, name='dispatch')
 class UserStatusView(APIView):
     permission_classes = [IsAuthenticated]
     
@@ -83,6 +86,7 @@ class UserStatusView(APIView):
         return Response({'status': 'online'})
 
 
+@method_decorator(csrf_exempt, name='dispatch')
 class CreateVideoCallView(APIView):
     permission_classes = [IsAuthenticated]
     
@@ -107,6 +111,7 @@ class CreateVideoCallView(APIView):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
+@method_decorator(csrf_exempt, name='dispatch')
 class FindMatchView(APIView):
     permission_classes = [IsAuthenticated]
     
@@ -271,6 +276,7 @@ class FindMatchView(APIView):
         return Response({'matched': False, 'message': 'No users available for matching'})
 
 
+@method_decorator(csrf_exempt, name='dispatch')
 class SkipCallView(APIView):
     permission_classes = [IsAuthenticated]
     
@@ -310,6 +316,7 @@ class SkipCallView(APIView):
         return Response({'status': 'skipped'})
 
 
+@method_decorator(csrf_exempt, name='dispatch')
 class EndCallView(APIView):
     permission_classes = [IsAuthenticated]
     
@@ -353,6 +360,7 @@ class EndCallView(APIView):
         return Response({'status': 'ended'})
 
 
+@method_decorator(csrf_exempt, name='dispatch')
 class SendMessageView(APIView):
     permission_classes = [IsAuthenticated]
     
@@ -384,6 +392,7 @@ class SendMessageView(APIView):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
+@method_decorator(csrf_exempt, name='dispatch')
 class GetMessagesView(APIView):
     permission_classes = [IsAuthenticated]
     
@@ -404,6 +413,7 @@ class GetMessagesView(APIView):
         return Response(serializer.data)
 
 
+@method_decorator(csrf_exempt, name='dispatch')
 class ClearMessagesView(APIView):
     permission_classes = [IsAuthenticated]
     
@@ -427,6 +437,7 @@ class ClearMessagesView(APIView):
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
+@csrf_exempt
 def user_logout(request):
     user = request.user
     print(f"User {user.username} logging out")

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
-import api from '../services/api';
+import { register, createCall, findMatch, skipCall, endCall, sendMessage, clearMessages } from '../services/api';
 import WebSocketService from '../services/websocket';
 import WebRTCService from '../services/webrtc';
 
@@ -119,7 +119,7 @@ export const AppProvider = ({ children }) => {
 
     const registerUser = async () => {
         try {
-            const response = await api.register();
+            const response = await register();
             
             // Store authentication tokens
             if (response.data.access_token) {
@@ -135,13 +135,13 @@ export const AppProvider = ({ children }) => {
         }
     };
 
-    const createCall = async () => {
+    const createCallAction = async () => {
         try {
             // Initialize local stream first
             console.log('Initializing local stream for call...');
             await webrtcService.initializeStream();
             
-            const response = await api.createCall();
+            const response = await createCall();
             dispatch({ type: 'SET_CURRENT_CALL', payload: response.data });
             dispatch({ type: 'SET_LOOKING_FOR_MATCH', payload: true });
             return response.data;
@@ -151,9 +151,9 @@ export const AppProvider = ({ children }) => {
         }
     };
 
-    const findMatch = async () => {
+    const findMatchAction = async () => {
         try {
-            const response = await api.findMatch();
+            const response = await findMatch();
             if (response.data.matched) {
                 dispatch({ type: 'SET_MATCHED_USER', payload: response.data.matched_user });
                 dispatch({ type: 'SET_LOOKING_FOR_MATCH', payload: false });
@@ -176,9 +176,9 @@ export const AppProvider = ({ children }) => {
         }
     };
 
-    const skipCall = async () => {
+    const skipCallAction = async () => {
         try {
-            await api.skipCall();
+            await skipCall();
             dispatch({ type: 'RESET_CALL' });
             webrtcService.destroy();
         } catch (error) {
@@ -187,9 +187,9 @@ export const AppProvider = ({ children }) => {
         }
     };
 
-    const endCall = async () => {
+    const endCallAction = async () => {
         try {
-            await api.endCall();
+            await endCall();
             dispatch({ type: 'RESET_CALL' });
             webrtcService.destroy();
         } catch (error) {
@@ -198,11 +198,11 @@ export const AppProvider = ({ children }) => {
         }
     };
 
-    const sendMessage = async (content) => {
+    const sendMessageAction = async (content) => {
         if (!state.currentCall) return;
         
         try {
-            const response = await api.sendMessage(state.currentCall.id, content);
+            const response = await sendMessage(state.currentCall.id, content);
             dispatch({ type: 'ADD_MESSAGE', payload: response.data });
             return response.data;
         } catch (error) {
@@ -211,11 +211,11 @@ export const AppProvider = ({ children }) => {
         }
     };
 
-    const clearMessages = async () => {
+    const clearMessagesAction = async () => {
         if (!state.currentCall) return;
         
         try {
-            await api.clearMessages(state.currentCall.id);
+            await clearMessages(state.currentCall.id);
             dispatch({ type: 'CLEAR_MESSAGES' });
         } catch (error) {
             dispatch({ type: 'SET_ERROR', payload: error.response?.data?.error || 'Failed to clear messages' });
@@ -252,12 +252,12 @@ export const AppProvider = ({ children }) => {
         wsService,
         webrtcService,
         registerUser,
-        createCall,
-        findMatch,
-        skipCall,
-        endCall,
-        sendMessage,
-        clearMessages,
+        createCall: createCallAction,
+        findMatch: findMatchAction,
+        skipCall: skipCallAction,
+        endCall: endCallAction,
+        sendMessage: sendMessageAction,
+        clearMessages: clearMessagesAction,
         toggleMute,
         toggleVideo,
         clearError

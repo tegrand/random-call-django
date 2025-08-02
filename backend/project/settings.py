@@ -180,6 +180,18 @@ if not DEBUG:
 
 CORS_ALLOW_CREDENTIALS = True
 
+# CSRF settings for API
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "https://random-call-django-production.up.railway.app",
+]
+
+# Allow API requests without CSRF
+CSRF_EXEMPT_URLS = [
+    r'^/api/.*$',
+]
+
 # Channels settings
 CHANNEL_LAYERS = {
     'default': {

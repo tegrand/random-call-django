@@ -1,23 +1,69 @@
-import axios from './axios';
+import axios from 'axios';
+import config from '../config';
 
-const API_BASE_URL = 'http://127.0.0.1:8000/api/v1';
+const api = axios.create({
+    baseURL: config.API_BASE_URL,
+    headers: {
+        'Content-Type': 'application/json',
+    },
+});
 
-const api = {
-    // User management
-    register: () => axios.post(`${API_BASE_URL}/users/register/`),
-    updateStatus: () => axios.post(`${API_BASE_URL}/users/status/`),
-    logout: () => axios.post(`${API_BASE_URL}/users/logout/`),
+// Add request interceptor to include JWT token
+api.interceptors.request.use(
+    (config) => {
+        const token = localStorage.getItem('access_token');
+        if (token) {
+            config.headers.Authorization = `Bearer ${token}`;
+        }
+        return config;
+    },
+    (error) => {
+        return Promise.reject(error);
+    }
+);
 
-    // Video call management
-    createCall: () => axios.post(`${API_BASE_URL}/users/call/create/`),
-    findMatch: () => axios.post(`${API_BASE_URL}/users/call/find-match/`),
-    skipCall: () => axios.post(`${API_BASE_URL}/users/call/skip/`),
-    endCall: () => axios.post(`${API_BASE_URL}/users/call/end/`),
+// Add response interceptor to handle token refresh
+api.interceptors.response.use(
+    (response) => response,
+    async (error) => {
+        const originalRequest = error.config;
+        
+        if (error.response?.status === 401 && !originalRequest._retry) {
+            originalRequest._retry = true;
+            
+            try {
+                const refreshToken = localStorage.getItem('refresh_token');
+                if (refreshToken) {
+                    const response = await axios.post(`${config.API_BASE_URL}${config.endpoints.tokenRefresh}`, {
+                        refresh: refreshToken
+                    });
+                    
+                    const { access } = response.data;
+                    localStorage.setItem('access_token', access);
+                    
+                    originalRequest.headers.Authorization = `Bearer ${access}`;
+                    return api(originalRequest);
+                }
+            } catch (refreshError) {
+                // Refresh failed, redirect to login
+                localStorage.removeItem('access_token');
+                localStorage.removeItem('refresh_token');
+                window.location.href = '/';
+            }
+        }
+        
+        return Promise.reject(error);
+    }
+);
 
-    // Chat management
-    getMessages: (callId) => axios.get(`${API_BASE_URL}/users/call/${callId}/messages/`),
-    sendMessage: (callId, content) => axios.post(`${API_BASE_URL}/users/call/${callId}/messages/send/`, { content }),
-    clearMessages: (callId) => axios.post(`${API_BASE_URL}/users/call/${callId}/messages/clear/`),
-};
+// API functions
+export const register = () => api.post(config.endpoints.register);
+export const createCall = () => api.post(config.endpoints.createCall);
+export const findMatch = () => api.post(config.endpoints.findMatch);
+export const skipCall = () => api.post(config.endpoints.skipCall);
+export const endCall = () => api.post(config.endpoints.endCall);
+export const sendMessage = (callId, content) => api.post(config.endpoints.sendMessage(callId), { content });
+export const getMessages = (callId) => api.get(config.endpoints.getMessages(callId));
+export const clearMessages = (callId) => api.post(config.endpoints.clearMessages(callId));
 
 export default api; 

@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
+import config from '../config';
 
 const VideoCall = () => {
     const [isChatOpen, setIsChatOpen] = useState(false);
@@ -62,16 +63,28 @@ const VideoCall = () => {
 
     const initializeWebRTC = async () => {
         try {
+            // First, initialize the local stream if not already done
+            if (!localStream) {
+                await webrtcService.initializeStream();
+            }
+            
             // Create peer connection
             webrtcService.createPeerConnection(true); // Initiator
             
-            // For testing purposes, let's create a simple loopback connection
-            // This will show the local video in the remote video window
-            setTimeout(() => {
-                if (localStream && webrtcService.callbacks.onRemoteStream) {
-                    // Create a new MediaStream with the same tracks for testing
-                    const testRemoteStream = new MediaStream(localStream.getTracks());
-                    webrtcService.callbacks.onRemoteStream(testRemoteStream);
+            // Set up WebRTC signal handling
+            webrtcService.on('onSignal', (signal) => {
+                wsService.send({
+                    type: signal.type,
+                    data: signal
+                });
+            });
+            
+            // Create and send offer
+            setTimeout(async () => {
+                try {
+                    await webrtcService.createOffer();
+                } catch (error) {
+                    console.error('Error creating offer:', error);
                 }
             }, 2000);
             
@@ -80,6 +93,53 @@ const VideoCall = () => {
             console.error('WebRTC initialization error:', error);
             clearError();
         }
+    };
+
+    // Initialize WebSocket connection
+    useEffect(() => {
+        if (currentCall && user) {
+            const wsUrl = `${config.WS_BASE_URL}/ws/video_call/${currentCall.id}/?username=${user.username}`;
+            wsService.connect(wsUrl);
+            
+            wsService.on('onMessage', handleWebSocketMessage);
+            wsService.on('onError', handleWebSocketError);
+            
+            return () => {
+                wsService.disconnect();
+            };
+        }
+    }, [currentCall, user, wsService]);
+
+    // Handle WebSocket messages
+    const handleWebSocketMessage = (data) => {
+        switch (data.type) {
+            case 'offer':
+                webrtcService.handleSignal(data.data);
+                break;
+            case 'answer':
+                webrtcService.handleSignal(data.data);
+                break;
+            case 'ice-candidate':
+                webrtcService.handleSignal(data.data);
+                break;
+            case 'chat_message':
+                // Handle incoming chat message
+                break;
+            case 'user_joined':
+                console.log('User joined:', data.data);
+                break;
+            case 'user_left':
+                console.log('User left:', data.data);
+                handleUserLeft();
+                break;
+            default:
+                console.log('Unknown message type:', data.type);
+        }
+    };
+
+    const handleWebSocketError = (error) => {
+        console.error('WebSocket error:', error);
+        clearError();
     };
 
     // Update video elements when streams change
