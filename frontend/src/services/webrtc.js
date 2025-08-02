@@ -3,93 +3,91 @@ class WebRTCService {
         this.localStream = null;
         this.remoteStream = null;
         this.peerConnection = null;
-        this.isInitiator = false;
-        this.callbacks = {
-            onLocalStream: null,
-            onRemoteStream: null,
-            onSignal: null,
-            onConnect: null,
-            onError: null
+        this.onSignalCallback = null;
+        this.eventListeners = {};
+        
+        // ICE servers for WebRTC
+        this.iceServers = {
+            iceServers: [
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'stun:stun1.l.google.com:19302' },
+                { urls: 'stun:stun2.l.google.com:19302' },
+                { urls: 'stun:stun3.l.google.com:19302' },
+                { urls: 'stun:stun4.l.google.com:19302' }
+            ]
         };
     }
 
     async initializeStream() {
         try {
+            console.log('Getting user media...');
             this.localStream = await navigator.mediaDevices.getUserMedia({
                 video: true,
                 audio: true
             });
+            console.log('Local stream obtained:', this.localStream);
             
-            if (this.callbacks.onLocalStream) {
-                this.callbacks.onLocalStream(this.localStream);
-            }
+            // Emit local stream event
+            this.emit('onLocalStream', this.localStream);
             
             return this.localStream;
         } catch (error) {
-            console.error('Error accessing media devices:', error);
-            if (this.callbacks.onError) {
-                this.callbacks.onError(error);
-            }
+            console.error('Error getting user media:', error);
             throw error;
         }
     }
 
-    createPeerConnection(isInitiator = false) {
-        this.isInitiator = isInitiator;
-        
-        const configuration = {
-            iceServers: [
-                { urls: 'stun:stun.l.google.com:19302' },
-                { urls: 'stun:stun1.l.google.com:19302' }
-            ]
-        };
-
+    async initializePeerConnection() {
         try {
-            this.peerConnection = new RTCPeerConnection(configuration);
-
-            // Add local stream tracks to the peer connection
+            console.log('Initializing peer connection...');
+            
+            // Create RTCPeerConnection
+            this.peerConnection = new RTCPeerConnection(this.iceServers);
+            
+            // Add local stream tracks to peer connection
             if (this.localStream) {
                 this.localStream.getTracks().forEach(track => {
                     this.peerConnection.addTrack(track, this.localStream);
                 });
             }
-
-            // Handle incoming streams
+            
+            // Handle remote stream
             this.peerConnection.ontrack = (event) => {
+                console.log('Remote track received:', event);
                 this.remoteStream = event.streams[0];
-                if (this.callbacks.onRemoteStream) {
-                    this.callbacks.onRemoteStream(this.remoteStream);
-                }
+                this.emit('onRemoteStream', this.remoteStream);
             };
-
-            // Handle connection state changes
-            this.peerConnection.onconnectionstatechange = () => {
-                if (this.peerConnection.connectionState === 'connected') {
-                    console.log('Peer connection established');
-                    if (this.callbacks.onConnect) {
-                        this.callbacks.onConnect();
-                    }
-                }
-            };
-
+            
             // Handle ICE candidates
             this.peerConnection.onicecandidate = (event) => {
                 if (event.candidate) {
-                    if (this.callbacks.onSignal) {
-                        this.callbacks.onSignal({
+                    console.log('ICE candidate:', event.candidate);
+                    if (this.onSignalCallback) {
+                        this.onSignalCallback({
                             type: 'ice-candidate',
                             candidate: event.candidate
                         });
                     }
                 }
             };
-
+            
+            // Handle connection state changes
+            this.peerConnection.onconnectionstatechange = () => {
+                console.log('Connection state:', this.peerConnection.connectionState);
+                if (this.peerConnection.connectionState === 'connected') {
+                    this.emit('onConnect');
+                }
+            };
+            
+            // Handle ICE connection state changes
+            this.peerConnection.oniceconnectionstatechange = () => {
+                console.log('ICE connection state:', this.peerConnection.iceConnectionState);
+            };
+            
+            console.log('Peer connection initialized');
             return this.peerConnection;
         } catch (error) {
-            console.error('Error creating peer connection:', error);
-            if (this.callbacks.onError) {
-                this.callbacks.onError(error);
-            }
+            console.error('Error initializing peer connection:', error);
             throw error;
         }
     }
@@ -98,18 +96,12 @@ class WebRTCService {
         if (!this.peerConnection) {
             throw new Error('Peer connection not initialized');
         }
-
+        
         try {
+            console.log('Creating offer...');
             const offer = await this.peerConnection.createOffer();
             await this.peerConnection.setLocalDescription(offer);
-            
-            if (this.callbacks.onSignal) {
-                this.callbacks.onSignal({
-                    type: 'offer',
-                    sdp: offer
-                });
-            }
-            
+            console.log('Offer created:', offer);
             return offer;
         } catch (error) {
             console.error('Error creating offer:', error);
@@ -121,18 +113,12 @@ class WebRTCService {
         if (!this.peerConnection) {
             throw new Error('Peer connection not initialized');
         }
-
+        
         try {
+            console.log('Creating answer...');
             const answer = await this.peerConnection.createAnswer();
             await this.peerConnection.setLocalDescription(answer);
-            
-            if (this.callbacks.onSignal) {
-                this.callbacks.onSignal({
-                    type: 'answer',
-                    sdp: answer
-                });
-            }
-            
+            console.log('Answer created:', answer);
             return answer;
         } catch (error) {
             console.error('Error creating answer:', error);
@@ -142,16 +128,22 @@ class WebRTCService {
 
     async handleSignal(signal) {
         if (!this.peerConnection) {
-            throw new Error('Peer connection not initialized');
+            console.warn('Peer connection not initialized, initializing now...');
+            await this.initializePeerConnection();
         }
-
+        
         try {
+            console.log('Handling signal:', signal);
+            
             if (signal.type === 'offer') {
-                await this.peerConnection.setRemoteDescription(new RTCSessionDescription(signal.sdp));
-                await this.createAnswer();
+                await this.peerConnection.setRemoteDescription(new RTCSessionDescription(signal));
+                const answer = await this.createAnswer();
+                if (this.onSignalCallback) {
+                    this.onSignalCallback(answer);
+                }
             } else if (signal.type === 'answer') {
-                await this.peerConnection.setRemoteDescription(new RTCSessionDescription(signal.sdp));
-            } else if (signal.type === 'ice-candidate') {
+                await this.peerConnection.setRemoteDescription(new RTCSessionDescription(signal));
+            } else if (signal.type === 'ice-candidate' && signal.candidate) {
                 await this.peerConnection.addIceCandidate(new RTCIceCandidate(signal.candidate));
             }
         } catch (error) {
@@ -160,35 +152,44 @@ class WebRTCService {
         }
     }
 
-    destroy() {
-        if (this.peerConnection) {
-            this.peerConnection.close();
-            this.peerConnection = null;
+    on(event, callback) {
+        if (!this.eventListeners[event]) {
+            this.eventListeners[event] = [];
         }
+        this.eventListeners[event].push(callback);
+    }
+
+    emit(event, data) {
+        if (this.eventListeners[event]) {
+            this.eventListeners[event].forEach(callback => callback(data));
+        }
+    }
+
+    onSignal(callback) {
+        this.onSignalCallback = callback;
+    }
+
+    destroy() {
+        console.log('Destroying WebRTC service...');
         
+        // Stop all tracks
         if (this.localStream) {
             this.localStream.getTracks().forEach(track => track.stop());
-            this.localStream = null;
         }
         
+        // Close peer connection
+        if (this.peerConnection) {
+            this.peerConnection.close();
+        }
+        
+        // Reset state
+        this.localStream = null;
         this.remoteStream = null;
-        this.isInitiator = false;
-    }
-
-    on(event, callback) {
-        this.callbacks[event] = callback;
-    }
-
-    getLocalStream() {
-        return this.localStream;
-    }
-
-    getRemoteStream() {
-        return this.remoteStream;
-    }
-
-    isConnected() {
-        return this.peerConnection && this.peerConnection.connectionState === 'connected';
+        this.peerConnection = null;
+        this.onSignalCallback = null;
+        this.eventListeners = {};
+        
+        console.log('WebRTC service destroyed');
     }
 }
 

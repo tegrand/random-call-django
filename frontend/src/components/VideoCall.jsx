@@ -6,6 +6,7 @@ import config from '../config';
 const VideoCall = () => {
     const navigate = useNavigate();
     const {
+        user,
         currentCall,
         matchedUser,
         isConnected,
@@ -55,11 +56,11 @@ const VideoCall = () => {
 
     // Handle WebSocket connection
     useEffect(() => {
-        if (!currentCall || websocketFailed) return;
+        if (!currentCall || !user || websocketFailed) return;
 
         const connectWebSocket = async () => {
             try {
-                const wsUrl = `${config.WS_BASE_URL}/ws/video_call/${currentCall.id}/?username=${currentCall.user.username}`;
+                const wsUrl = `${config.WS_BASE_URL}/ws/video_call/${currentCall.id}/?username=${user.username}`;
                 console.log('Connecting to WebSocket:', wsUrl);
                 
                 wsService.connect(wsUrl);
@@ -89,7 +90,7 @@ const VideoCall = () => {
         return () => {
             wsService.disconnect();
         };
-    }, [currentCall, wsService, websocketFailed]);
+    }, [currentCall, user, wsService, websocketFailed]);
 
     // Polling fallback for when WebSocket fails
     const startPolling = () => {
@@ -99,9 +100,10 @@ const VideoCall = () => {
                 // Poll for match status
                 if (isLookingForMatch) {
                     const response = await findMatch();
-                    if (response.data.matched) {
+                    console.log('Polling response:', response);
+                    if (response && response.data && response.data.matched) {
                         console.log('Match found via polling!');
-                        // Handle match found
+                        // Handle match found - the context will handle this
                     }
                 }
             } catch (error) {
@@ -178,6 +180,9 @@ const VideoCall = () => {
                         }
                     }
 
+                    // Initialize peer connection first
+                    await webrtcService.initializePeerConnection();
+                    
                     // Create offer after a short delay
                     setTimeout(async () => {
                         try {
@@ -284,6 +289,11 @@ const VideoCall = () => {
                                     WebSocket unavailable, using fallback connection
                                 </p>
                             )}
+                            {matchedUser && (
+                                <p className="text-green-400 text-sm mt-2">
+                                    Matched with: {matchedUser.username}
+                                </p>
+                            )}
                         </div>
                     </div>
                 )}
@@ -348,6 +358,13 @@ const VideoCall = () => {
                 <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-50 text-white px-3 py-1 rounded-full">
                     {websocketFailed ? '📡 Polling' : '🔗 WebSocket'}
                 </div>
+
+                {/* User Info */}
+                {user && (
+                    <div className="absolute top-4 right-4 bg-black bg-opacity-50 text-white px-3 py-1 rounded-full">
+                        You: {user.username}
+                    </div>
+                )}
             </div>
 
             {/* Chat Panel */}
