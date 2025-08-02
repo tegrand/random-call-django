@@ -1,26 +1,33 @@
 // Configuration for the application
 const config = {
-    // Backend API URL - Try different approaches to handle CSP
+    // Backend API URL - Handle CSP issues with multiple fallback options
     get API_BASE_URL() {
         // In development, use localhost
         if (process.env.NODE_ENV === 'development') {
             return 'http://127.0.0.1:8000';
         }
         
-        // In production, try to use proxy first, then direct backend
+        // Check if we're on localhost
         const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
         if (isLocalhost) {
             return 'http://127.0.0.1:8000';
         }
         
-        // For deployed frontend, use proxy approach
+        // For production, try to detect if proxy is working
+        // If not, we'll need to use a different approach
+        console.log('Current origin:', window.location.origin);
+        console.log('Current hostname:', window.location.hostname);
+        
+        // Try to use proxy first
         return window.location.origin;
     },
     
-    // WebSocket URL - Will be automatically generated from API_BASE_URL
+    // WebSocket URL - Handle CSP for WebSocket connections
     get WS_BASE_URL() {
         const baseUrl = this.API_BASE_URL;
+        
         // For WebSocket, we need to use the direct backend URL
+        // since WebSocket proxy is more complex
         if (baseUrl === window.location.origin) {
             return 'wss://random-call-django-production.up.railway.app';
         }
@@ -41,6 +48,11 @@ const config = {
         getMessages: (callId) => `/api/v1/call/${callId}/messages/`,
         clearMessages: (callId) => `/api/v1/call/${callId}/messages/clear/`,
         tokenRefresh: '/api/token/refresh/',
+    },
+    
+    // Direct backend URL for fallback
+    get DIRECT_BACKEND_URL() {
+        return 'https://random-call-django-production.up.railway.app';
     }
 };
 
