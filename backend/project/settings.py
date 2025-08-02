@@ -195,23 +195,12 @@ CSRF_EXEMPT_URLS = [
     r'^/api/.*$',
 ]
 
-# Channels settings
+# Channels settings - Use in-memory for both dev and production
 CHANNEL_LAYERS = {
     'default': {
         'BACKEND': 'channels.layers.InMemoryChannelLayer',
     }
 }
-
-# Use Redis in production for better performance
-if not DEBUG:
-    CHANNEL_LAYERS = {
-        'default': {
-            'BACKEND': 'channels_redis.core.RedisChannelLayer',
-            'CONFIG': {
-                "hosts": [os.environ.get('REDIS_URL', 'redis://localhost:6379')],
-            },
-        },
-    }
 
 # Security settings for production
 if not DEBUG:
