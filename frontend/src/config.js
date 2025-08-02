@@ -4,34 +4,44 @@ const config = {
     get API_BASE_URL() {
         // In development, use localhost
         if (process.env.NODE_ENV === 'development') {
+            console.log('Development mode - using localhost');
             return 'http://127.0.0.1:8000';
         }
         
         // Check if we're on localhost
         const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
         if (isLocalhost) {
+            console.log('Localhost detected - using localhost backend');
             return 'http://127.0.0.1:8000';
         }
         
         // For production, try to detect if proxy is working
         // If not, we'll need to use a different approach
+        console.log('Production mode detected');
         console.log('Current origin:', window.location.origin);
         console.log('Current hostname:', window.location.hostname);
         
         // Try to use proxy first
-        return window.location.origin;
+        const proxyUrl = window.location.origin;
+        console.log('Using proxy URL:', proxyUrl);
+        return proxyUrl;
     },
     
     // WebSocket URL - Handle CSP for WebSocket connections
     get WS_BASE_URL() {
         const baseUrl = this.API_BASE_URL;
+        console.log('Generating WebSocket URL from baseUrl:', baseUrl);
         
         // For WebSocket, we need to use the direct backend URL
         // since WebSocket proxy is more complex
         if (baseUrl === window.location.origin) {
-            return 'wss://random-call-django-production.up.railway.app';
+            const wsUrl = 'wss://random-call-django-production.up.railway.app';
+            console.log('Using direct WebSocket URL:', wsUrl);
+            return wsUrl;
         }
-        return baseUrl.replace('https://', 'wss://').replace('http://', 'ws://');
+        const wsUrl = baseUrl.replace('https://', 'wss://').replace('http://', 'ws://');
+        console.log('Using WebSocket URL:', wsUrl);
+        return wsUrl;
     },
     
     // Development mode
@@ -52,7 +62,9 @@ const config = {
     
     // Direct backend URL for fallback
     get DIRECT_BACKEND_URL() {
-        return 'https://random-call-django-production.up.railway.app';
+        const directUrl = 'https://random-call-django-production.up.railway.app';
+        console.log('Direct backend URL:', directUrl);
+        return directUrl;
     }
 };
 
