@@ -75,11 +75,17 @@ export const AppProvider = ({ children }) => {
 
     // Check for existing authentication on app startup
     useEffect(() => {
+        console.log('App starting - checking localStorage...');
         const token = localStorage.getItem('access_token');
+        const refreshToken = localStorage.getItem('refresh_token');
+        console.log('Existing access token:', token ? 'PRESENT' : 'MISSING');
+        console.log('Existing refresh token:', refreshToken ? 'PRESENT' : 'MISSING');
+        
         if (token) {
             // User is already authenticated, we can restore their session
             // For now, we'll just clear the token and let them register again
             // In a real app, you'd validate the token and restore the user session
+            console.log('Clearing existing tokens...');
             localStorage.removeItem('access_token');
             localStorage.removeItem('refresh_token');
         }
@@ -120,18 +126,41 @@ export const AppProvider = ({ children }) => {
     const registerUser = async () => {
         try {
             console.log('Registering user...');
+            
+            // Test localStorage functionality
+            try {
+                localStorage.setItem('test_key', 'test_value');
+                const testValue = localStorage.getItem('test_key');
+                console.log('localStorage test:', testValue === 'test_value' ? 'PASSED' : 'FAILED');
+                localStorage.removeItem('test_key');
+            } catch (e) {
+                console.error('localStorage test FAILED:', e);
+            }
+            
             const response = await register();
             console.log('Registration response:', response.data);
+            console.log('Response keys:', Object.keys(response.data));
             
             // Store authentication tokens
             if (response.data.access_token) {
-                localStorage.setItem('access_token', response.data.access_token);
-                localStorage.setItem('refresh_token', response.data.refresh_token);
-                console.log('Tokens stored in localStorage');
-                console.log('Access token:', response.data.access_token.substring(0, 20) + '...');
-                console.log('Refresh token:', response.data.refresh_token.substring(0, 20) + '...');
+                try {
+                    localStorage.setItem('access_token', response.data.access_token);
+                    localStorage.setItem('refresh_token', response.data.refresh_token);
+                    console.log('Tokens stored in localStorage');
+                    console.log('Access token:', response.data.access_token.substring(0, 20) + '...');
+                    console.log('Refresh token:', response.data.refresh_token.substring(0, 20) + '...');
+                    
+                    // Verify tokens were stored
+                    const storedAccess = localStorage.getItem('access_token');
+                    const storedRefresh = localStorage.getItem('refresh_token');
+                    console.log('Stored access token:', storedAccess ? 'PRESENT' : 'MISSING');
+                    console.log('Stored refresh token:', storedRefresh ? 'PRESENT' : 'MISSING');
+                } catch (e) {
+                    console.error('Error storing tokens:', e);
+                }
             } else {
                 console.error('No access_token in response');
+                console.log('Available keys in response:', Object.keys(response.data));
             }
             
             dispatch({ type: 'SET_USER', payload: response.data.user });
