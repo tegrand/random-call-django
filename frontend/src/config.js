@@ -11,16 +11,16 @@ const config = {
     // Development mode
     isDevelopment: process.env.NODE_ENV === 'development',
     
-    // API endpoints - Updated to match backend URL structure
+    // API endpoints - Fixed to match actual backend URL structure
     endpoints: {
-        register: '/api/v1/users/register/',
-        createCall: '/api/v1/users/call/create/',
-        findMatch: '/api/v1/users/call/find-match/',
-        skipCall: '/api/v1/users/call/skip/',
-        endCall: '/api/v1/users/call/end/',
-        sendMessage: (callId) => `/api/v1/users/call/${callId}/messages/send/`,
-        getMessages: (callId) => `/api/v1/users/call/${callId}/messages/`,
-        clearMessages: (callId) => `/api/v1/users/call/${callId}/messages/clear/`,
+        register: '/api/v1/register/',
+        createCall: '/api/v1/call/create/',
+        findMatch: '/api/v1/call/find-match/',
+        skipCall: '/api/v1/call/skip/',
+        endCall: '/api/v1/call/end/',
+        sendMessage: (callId) => `/api/v1/call/${callId}/messages/send/`,
+        getMessages: (callId) => `/api/v1/call/${callId}/messages/`,
+        clearMessages: (callId) => `/api/v1/call/${callId}/messages/clear/`,
         tokenRefresh: '/api/token/refresh/',
     }
 };
