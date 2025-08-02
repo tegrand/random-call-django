@@ -119,17 +119,25 @@ export const AppProvider = ({ children }) => {
 
     const registerUser = async () => {
         try {
+            console.log('Registering user...');
             const response = await register();
+            console.log('Registration response:', response.data);
             
             // Store authentication tokens
             if (response.data.access_token) {
                 localStorage.setItem('access_token', response.data.access_token);
                 localStorage.setItem('refresh_token', response.data.refresh_token);
+                console.log('Tokens stored in localStorage');
+                console.log('Access token:', response.data.access_token.substring(0, 20) + '...');
+                console.log('Refresh token:', response.data.refresh_token.substring(0, 20) + '...');
+            } else {
+                console.error('No access_token in response');
             }
             
             dispatch({ type: 'SET_USER', payload: response.data.user });
             return response.data.user;
         } catch (error) {
+            console.error('Registration error:', error);
             dispatch({ type: 'SET_ERROR', payload: error.response?.data?.error || 'Registration failed' });
             throw error;
         }
@@ -178,10 +186,16 @@ export const AppProvider = ({ children }) => {
 
     const skipCallAction = async () => {
         try {
+            console.log('Skipping call...');
+            console.log('Current tokens in localStorage:');
+            console.log('Access token:', localStorage.getItem('access_token') ? 'Present' : 'Missing');
+            console.log('Refresh token:', localStorage.getItem('refresh_token') ? 'Present' : 'Missing');
+            
             await skipCall();
             dispatch({ type: 'RESET_CALL' });
             webrtcService.destroy();
         } catch (error) {
+            console.error('Skip call error:', error);
             dispatch({ type: 'SET_ERROR', payload: error.response?.data?.error || 'Failed to skip call' });
             throw error;
         }
