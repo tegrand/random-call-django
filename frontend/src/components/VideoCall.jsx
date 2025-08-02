@@ -269,6 +269,19 @@ const VideoCall = () => {
         <div className="min-h-screen bg-gray-900 relative">
             {/* Video Container */}
             <div className="relative h-screen">
+                {/* Local Video (Picture-in-Picture) */}
+                {localStream && (
+                    <div className="absolute top-4 right-4 w-48 h-36 bg-black rounded-lg overflow-hidden shadow-lg">
+                        <video
+                            ref={localVideoRef}
+                            autoPlay
+                            playsInline
+                            muted
+                            className="w-full h-full object-cover video-mirror"
+                        />
+                    </div>
+                )}
+
                 {/* Remote Video (Full Screen) */}
                 {remoteStream ? (
                     <video
@@ -295,19 +308,6 @@ const VideoCall = () => {
                                 </p>
                             )}
                         </div>
-                    </div>
-                )}
-
-                {/* Local Video (Picture-in-Picture) */}
-                {localStream && (
-                    <div className="absolute top-4 right-4 w-48 h-36 bg-black rounded-lg overflow-hidden shadow-lg">
-                        <video
-                            ref={localVideoRef}
-                            autoPlay
-                            playsInline
-                            muted
-                            className="w-full h-full object-cover"
-                        />
                     </div>
                 )}
 
